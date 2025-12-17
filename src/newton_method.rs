@@ -1,5 +1,11 @@
-use crate::complex::Complex;
+use crate::complex::{Complex, DComplex};
 
-fn newton_method(f: impl FnMut(), x: Complex) -> Complex {
-    Complex::new(42_f64, 42_f64)
+fn newton_method<F>(mut f: F, z: Complex) -> Complex
+where
+    F: FnMut(DComplex) -> DComplex,
+{
+    let z_dual = DComplex::var(z);
+    let f_z = f(z_dual);
+
+    z - (f_z.val / f_z.der)
 }
