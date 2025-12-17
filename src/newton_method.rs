@@ -1,11 +1,11 @@
 use crate::complex::{Complex, DComplex};
 
-fn newton_method<F>(mut f: F, z: Complex) -> Complex
+fn newton_stream<F>(mut f: F, start: Complex) -> impl Iterator<Item = Complex>
 where
-    F: FnMut(DComplex) -> DComplex,
+    F: Fn(DComplex) -> DComplex + Clone,
 {
-    let z_dual = DComplex::var(z);
-    let f_z = f(z_dual);
-
-    z - (f_z.val / f_z.der)
+    std::iter::successors(Some(start), move |&z| {
+        let y = f(DComplex::var(z));
+        Some(z - (y.val / y.der))
+    })
 }
