@@ -6,4 +6,4 @@ edition = "2024"
 [dependencies]
 winit = "0.30.12"
 glutin = "0.32.3"
-femtovg = "0.19.3"
+pixels = "0.15.0"
