@@ -1,8 +1,9 @@
-mod complex;
-mod newton_method;
-mod visual;
-use complex::Complex;
+mod math;
+mod render_utils;
 
-use crate::complex::DComplex;
+use math::complex::Complex;
+use render_utils::visual::init;
 
-fn main() {}
+fn main() {
+    init()
+}

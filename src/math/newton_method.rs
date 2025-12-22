@@ -1,4 +1,4 @@
-use crate::complex::{Complex, DComplex};
+use crate::math::complex::{Complex, DComplex};
 
 pub fn newton_stream<F>(f: F, start: Complex) -> impl Iterator<Item = Complex>
 where

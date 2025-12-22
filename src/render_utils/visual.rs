@@ -7,6 +7,10 @@ use winit::window::{Window, WindowId};
 struct App {
     window: Option<Window>,
 }
+struct Plot {
+    height: f64,
+    width: f64,
+}
 
 impl ApplicationHandler for App {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
@@ -44,7 +48,7 @@ impl ApplicationHandler for App {
     }
 }
 
-fn init() {
+pub fn init() {
     let event_loop = EventLoop::new().unwrap();
     event_loop.set_control_flow(ControlFlow::Wait);
 
