@@ -1,10 +1,29 @@
-{ pkgs ? import <nixpkgs> { } }:
-pkgs.mkShell {
-  nativeBuildInputs = with pkgs.buildPackages; [
-    rustc
-    cargo
-    rust-analyzer
-    clippy
-    rustfmt
-  ];
+{
+  pkgs ? import <nixpkgs> { },
+}:
+let
+  libPath =
+    with pkgs;
+    lib.makeLibraryPath [
+      libGL
+      libxkbcommon
+      wayland
+    ];
+in
+{
+  devShell =
+    with pkgs;
+    mkShell {
+      buildInputs = [
+        rustc
+        cargo
+        rust-analyzer
+        clippy
+        rustfmt
+      ];
+
+      RUST_LOG = "debug";
+      RUST_SRC_PATH = "${pkgs.rust.packages.stable.rustPlatform.rustLibSrc}";
+      LD_LIBRARY_PATH = libPath;
+    };
 }
