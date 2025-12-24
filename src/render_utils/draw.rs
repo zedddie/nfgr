@@ -114,7 +114,7 @@ mod platform {
 
     #[allow(dead_code)]
     pub fn fill_window(window: &Window) {
-        fill_window_with_color(window, 0xff181818);
+        fill_window_with_color(window, 0xFF0000FF);
     }
 
     #[allow(dead_code)]

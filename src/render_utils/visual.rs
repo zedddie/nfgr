@@ -1,3 +1,6 @@
+use crate::render_utils::draw::fill_window_with_animated_color;
+use std::thread::sleep;
+use std::time::{Duration, Instant};
 use winit::application::ApplicationHandler;
 use winit::event::WindowEvent;
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
@@ -33,7 +36,16 @@ impl ApplicationHandler for App {
                 // It's preferable for applications that do not render continuously to render in
                 // this event rather than in AboutToWait, since rendering in here allows
                 // the program to gracefully handle redraws requested by the OS.
+                let window = self
+                    .window
+                    .as_ref()
+                    .expect("redraw request without a window");
 
+                // Notify that you're about to draw.
+                window.pre_present_notify();
+
+                // Draw.
+                fill_window_with_animated_color(window, Instant::now());
                 // Draw.
 
                 // Queue a RedrawRequested event.
@@ -50,7 +62,7 @@ impl ApplicationHandler for App {
 
 pub fn init() {
     let event_loop = EventLoop::new().unwrap();
-    event_loop.set_control_flow(ControlFlow::Wait);
+    event_loop.set_control_flow(ControlFlow::Poll);
 
     let mut app = App::default();
     event_loop.run_app(&mut app);

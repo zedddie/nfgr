@@ -1,6 +1,6 @@
 use crate::math::complex::{Complex, DComplex};
 
-pub fn newton_stream<F>(f: F, start: Complex) -> impl Iterator<Item = Complex>
+fn newton_stream<F>(f: F, start: Complex) -> impl Iterator<Item = Complex>
 where
     F: Fn(DComplex) -> DComplex + Clone,
 {
@@ -29,7 +29,7 @@ where
         .last()
         .unwrap_or((start_z, 0))
 }
-fn closest_root(z: Complex, roots: &[Complex]) -> Option<usize> {
+pub fn closest_root(z: Complex, roots: &[Complex]) -> Option<usize> {
     roots
         .iter()
         .enumerate()
