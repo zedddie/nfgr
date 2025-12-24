@@ -28,6 +28,12 @@ pub fn calculate_buffer(window: Window, math_plot_size: MathPlot) {
             let idx = py * plot_area.width + px;
             let rl = -(math_plot_size.x / 2_f64) + (px as f64 + 0.5) * pq_step_x;
             let im = math_plot_size.y / 2_f64 - (py as f64 + 0.5) * pq_step_y;
+
+            // then pass colored pixel to buffer here.
+
+            // TODO :
+            // 1. [ ] - Implement colouring logic
+            // 2. [ ] - Implement generic roots color choosing
         }
     }
 }
