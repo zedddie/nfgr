@@ -1,4 +1,7 @@
-use crate::render_utils::draw::fill_window_with_animated_color;
+use crate::Complex;
+use crate::math::calc_buffer::MathPlot;
+use crate::math::complex::DComplex;
+use crate::render_utils::draw::draw_fractal;
 use std::thread::sleep;
 use std::time::{Duration, Instant};
 use winit::application::ApplicationHandler;
@@ -31,29 +34,13 @@ impl ApplicationHandler for App {
                 event_loop.exit();
             }
             WindowEvent::RedrawRequested => {
-                // Redraw the application.
-                //
-                // It's preferable for applications that do not render continuously to render in
-                // this event rather than in AboutToWait, since rendering in here allows
-                // the program to gracefully handle redraws requested by the OS.
-                let window = self
-                    .window
-                    .as_ref()
-                    .expect("redraw request without a window");
+                let window = self.window.as_ref().unwrap();
 
-                // Notify that you're about to draw.
-                window.pre_present_notify();
+                let func = |z: DComplex| z.powi(3) - DComplex::cst(Complex { rl: 1.0, im: 0.0 });
 
-                // Draw.
-                fill_window_with_animated_color(window, Instant::now());
-                // Draw.
+                draw_fractal(window, MathPlot { x: 4_f64, y: 4_f64 }, func);
 
-                // Queue a RedrawRequested event.
-                //
-                // You only need to call this if you've determined that you need to redraw in
-                // applications which do not always need to. Applications that redraw continuously
-                // can render here instead.
-                self.window.as_ref().unwrap().request_redraw();
+                window.request_redraw();
             }
             _ => (),
         }

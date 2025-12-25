@@ -1,5 +1,6 @@
 use crate::math::complex::{Complex, DComplex};
 use crate::math::newton_method::calc_root;
+use softbuffer::Buffer;
 // 1. plot buffer calculation;
 // 2. viewarea & full plot size structs
 // 3. colours & luminosity calculation
@@ -7,44 +8,43 @@ use crate::math::newton_method::calc_root;
 use winit::window::Window;
 
 pub struct MathPlot {
-    x: f64,
-    y: f64,
+    pub x: f64,
+    pub y: f64,
 }
-struct PlotArea {
-    width: u64,
-    height: u64,
+#[derive(Clone)]
+pub struct PlotArea {
+    pub width: u64,
+    pub height: u64,
 }
 
-pub fn calculate_buffer<F>(window: Window, f: F, math_plot_size: MathPlot) -> Vec<u32>
-where
+pub fn calculate_buffer<F>(
+    buf: &mut [u32],
+    width: usize,
+    height: usize,
+    f: F,
+    math_plot_size: MathPlot,
+) where
     F: Fn(DComplex) -> DComplex + Clone,
 {
-    let window_size = window.inner_size();
-    let plot_area = PlotArea {
-        width: window_size.width as u64,
-        height: window_size.height as u64,
-    };
-    let pq_step_x = math_plot_size.x / plot_area.width as f64;
-    let pq_step_y = math_plot_size.y / plot_area.height as f64;
+    // let plot_area = PlotArea {
+    //     width: window_size.width as u64,
+    //     height: window_size.height as u64,
+    // };
+    let pq_step_x = math_plot_size.x / width as f64;
+    let pq_step_y = math_plot_size.y / height as f64;
 
-    let mut buf = Vec::<u32>::new();
-
-    for py in 0..plot_area.height {
-        for px in 0..plot_area.width {
-            let idx = py * plot_area.width + px;
+    for py in 0..height {
+        for px in 0..width {
+            let idx = py * width + px;
             let rl = -(math_plot_size.x / 2_f64) + (px as f64 + 0.5) * pq_step_x;
             let im = math_plot_size.y / 2_f64 - (py as f64 + 0.5) * pq_step_y;
 
-            let conv_root = calc_root(Complex { rl, im }, &f, 100);
+            let conv_root = calc_root(Complex { rl, im }, &f, 300);
             apply_coloring(conv_root.0, conv_root.1, 100_usize);
-            buf.insert(
-                idx as usize,
-                apply_coloring(conv_root.0, conv_root.1, 100_usize),
-            );
+            buf[idx as usize] = apply_coloring(conv_root.0, conv_root.1, 100_usize);
             // 2. [ ] - Implement generic roots color choosing
         }
     }
-    buf
 }
 fn apply_coloring(z: Complex, iters: usize, max_iter: usize) -> u32 {
     if iters >= max_iter {

@@ -1,139 +1,68 @@
-//! Fill the window buffer with a solid color.
-//!
-//! Launching a window without drawing to it has unpredictable results varying from platform to
-//! platform. In order to have well-defined examples, this module provides an easy way to
-//! fill the window buffer with a solid color.
-//!
-//! The `softbuffer` crate is used, largely because of its ease of use. `glutin` or `wgpu` could
-//! also be used to fill the window buffer, but they are more complicated to use.
+use softbuffer::{Context, Surface};
+use std::cell::RefCell;
+use std::collections::HashMap;
+use std::mem;
+use std::num::NonZeroU32;
+use std::rc::Rc;
+use winit::window::{Window, WindowId};
 
-#[allow(unused_imports)]
-pub use platform::cleanup_window;
-#[allow(unused_imports)]
-pub use platform::fill_window;
-#[allow(unused_imports)]
-pub use platform::fill_window_with_animated_color;
-#[allow(unused_imports)]
-pub use platform::fill_window_with_color;
+use crate::math::calc_buffer::{MathPlot, calculate_buffer};
+use crate::math::complex::DComplex;
 
-mod platform {
-    use std::cell::RefCell;
-    use std::collections::HashMap;
-    use std::mem;
-    use std::mem::ManuallyDrop;
-    use std::num::NonZeroU32;
-    use std::rc::Rc;
-    use std::time::Instant;
+thread_local! {
+    static GC: RefCell<Option<GraphicsContext>> = RefCell::new(None);
+}
 
-    use softbuffer::{Context, Surface};
-    use winit::window::{Window, WindowId};
+struct GraphicsContext {
+    context: Context<Rc<Window>>,
+    surfaces: HashMap<WindowId, (Rc<Window>, Surface<Rc<Window>, Rc<Window>>)>,
+}
 
-    thread_local! {
-        // NOTE: You should never do things like that, create context and drop it before
-        // you drop the event loop. We do this for brevity to not blow up examples. We use
-        // ManuallyDrop to prevent destructors from running.
-        //
-        // A static, thread-local map of graphics contexts to open windows.
-        static GC: ManuallyDrop<RefCell<Option<GraphicsContext>>> = const { ManuallyDrop::new(RefCell::new(None)) };
-    }
+pub fn draw_fractal<F>(window: &Window, math_plot: MathPlot, f: F)
+where
+    F: Fn(DComplex) -> DComplex + Clone,
+{
+    GC.with(|gc| {
+        let size = window.inner_size();
+        let (Some(width), Some(height)) =
+            (NonZeroU32::new(size.width), NonZeroU32::new(size.height))
+        else {
+            return;
+        };
 
-    /// The graphics context used to draw to a window.
-    struct GraphicsContext {
-        /// The global softbuffer context.
-        context: Context<Rc<Window>>,
-
-        /// The hash map of window IDs to surfaces.
-        surfaces: HashMap<WindowId, (Rc<Window>, Surface<Rc<Window>, Rc<Window>>)>,
-    }
-
-    impl GraphicsContext {
-        fn new(w: &Window) -> Self {
-            let rc_window = unsafe {
-                Rc::from_raw(mem::transmute::<&'_ Window, &'static Window>(w) as *const Window)
-            };
-            let context =
-                Context::new(rc_window.clone()).expect("Failed to create a softbuffer context");
+        let mut gc_borrow = gc.borrow_mut();
+        let gc = gc_borrow.get_or_insert_with(|| {
+            let rc_window = unsafe { Rc::from_raw(window as *const Window) };
+            let context = Context::new(rc_window.clone()).expect("Ctx failed");
             mem::forget(rc_window);
-
-            Self {
+            GraphicsContext {
                 context,
                 surfaces: HashMap::new(),
             }
-        }
+        });
 
-        fn create_surface(&mut self, window: &Window) -> &mut Surface<Rc<Window>, Rc<Window>> {
-            let window_id = window.id();
-            let entry = self.surfaces.entry(window_id).or_insert_with(|| {
-                let rc_window = unsafe {
-                    Rc::from_raw(
-                        mem::transmute::<&'_ Window, &'static Window>(window) as *const Window
-                    )
-                };
-                let surface = Surface::new(&self.context, rc_window.clone())
-                    .expect("Failed to create a softbuffer surface");
+        let surface = &mut gc
+            .surfaces
+            .entry(window.id())
+            .or_insert_with(|| {
+                let rc_window = unsafe { Rc::from_raw(window as *const Window) };
+                let surface = Surface::new(&gc.context, rc_window.clone()).expect("Surf failed");
                 mem::forget(rc_window.clone());
                 (rc_window, surface)
-            });
-            &mut entry.1
-        }
+            })
+            .1;
 
-        fn destroy_surface(&mut self, window_id: WindowId) {
-            self.surfaces.remove(&window_id);
-        }
-    }
+        surface.resize(width, height).unwrap();
+        let mut buffer = surface.buffer_mut().unwrap();
 
-    pub fn fill_window_with_color(window: &Window, color: u32) {
-        GC.with(|gc| {
-            let size = window.inner_size();
-            let (Some(width), Some(height)) =
-                (NonZeroU32::new(size.width), NonZeroU32::new(size.height))
-            else {
-                return;
-            };
+        calculate_buffer(
+            &mut buffer,
+            width.get() as usize,
+            height.get() as usize,
+            f,
+            math_plot,
+        );
 
-            // Either get the last context used or create a new one.
-            let mut gc = gc.borrow_mut();
-            let surface = gc
-                .get_or_insert_with(|| GraphicsContext::new(window))
-                .create_surface(window);
-
-            // Fill a buffer with a solid color
-            surface
-                .resize(width, height)
-                .expect("Failed to resize the softbuffer surface");
-
-            let mut buffer = surface
-                .buffer_mut()
-                .expect("Failed to get the softbuffer buffer");
-            buffer.fill(color);
-            buffer
-                .present()
-                .expect("Failed to present the softbuffer buffer");
-        })
-    }
-
-    #[allow(dead_code)]
-    pub fn fill_window(window: &Window) {
-        fill_window_with_color(window, 0xFF0000FF);
-    }
-
-    #[allow(dead_code)]
-    pub fn fill_window_with_animated_color(window: &Window, start: Instant) {
-        let time = start.elapsed().as_secs_f32() * 1.5;
-        let blue = (time.sin() * 255.0) as u32;
-        let green = ((time.cos() * 255.0) as u32) << 8;
-        let red = ((1.0 - time.sin() * 255.0) as u32) << 16;
-        let color = red | green | blue;
-        fill_window_with_color(window, color);
-    }
-
-    #[allow(dead_code)]
-    pub fn cleanup_window(window_id: WindowId) {
-        GC.with(|gc| {
-            let mut gc = gc.borrow_mut();
-            if let Some(context) = gc.as_mut() {
-                context.destroy_surface(window_id);
-            }
-        });
-    }
+        buffer.present().unwrap();
+    });
 }
